@@ -1,70 +1,13 @@
-// Atalho para pegar uma aba pelo nome
-function aba(nome) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(nome);
-}
 
-/**
- * Pega todos os processos e troca os IDs pelos nomes reais
- */
-function getProcessoCompleto() {
-  var dadosProcessos = aba("Processos").getDataRange().getValues();
-  var dadosClientes = aba("Clientes").getDataRange().getValues();
-  var dadosProdutos = aba("Produtos").getDataRange().getValues();
-
-  var listaParaTabela = [];
-
-  // Começa do 1 para pular o cabeçalho
-  for (var i = 1; i < dadosProcessos.length; i++) {
-    var linha = dadosProcessos[i];
-    
-    var idCli  = linha[1];
-    var idProd = linha[2];
-    var valor  = linha[5];
-    var garan  = linha[6];
-
-    // Busca o nome do cliente manualmente
-    var nomeCli = "Não encontrado";
-    for (var c = 1; c < dadosClientes.length; c++) {
-      if (dadosClientes[c][0] == idCli) {
-        nomeCli = dadosClientes[c][1];
-        break;
-      }
-    }
-
-    // Busca o nome do produto manualmente
-    var nomeProd = "Não encontrado";
-    for (var p = 1; p < dadosProdutos.length; p++) {
-      if (dadosProdutos[p][0] == idProd) {
-        nomeProd = dadosProdutos[p][2];
-        break;
-      }
-    }
-
-    listaParaTabela.push({
-      id: linha[0],
-      nome: nomeCli,
-      produto: nomeProd,
-      produtoId: idProd,
-      unidadeId: linha[3],
-      contrato: linha[4],
-      valor: valor,
-      garantia: garan,
-      status: linha[7],
-      eViavel: calcularViabilidade(valor, garan) // Regra de negócio
-    });
-  }
-  return listaParaTabela;
-}
 
 /**
  * Salva um novo processo ou atualiza um existente
  */
 function cadastrarNovoProcesso(dados) {
-  var planilha = aba("Processos");
+  var planilha = consultaAba("Processos");
   var idCliente = buscarOuCriarCliente(dados.nome, dados.cpf);
   var contrato = gerarProximoContrato();
-  var idProcesso = "PROC_" + new Date().getTime();
+  var idProcesso = "PROCESSO_" + planilha.getLastRow();
   var dataAgora = Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy HH:mm");
 
   var novaLinha = [
@@ -78,7 +21,7 @@ function cadastrarNovoProcesso(dados) {
 }
 
 function atualizarProcessoNoServidor(idProcesso, dados) {
-  var planilha = aba("Processos");
+  var planilha = consultaAba("Processos");
   var dadosPlanilha = planilha.getDataRange().getValues();
   var idCliente = buscarOuCriarCliente(dados.nome, dados.cpf);
   var dataAgora = Utilities.formatDate(new Date(), "GMT-3", "dd/MM/yyyy HH:mm");
@@ -99,7 +42,7 @@ function atualizarProcessoNoServidor(idProcesso, dados) {
 }
 
 function buscarOuCriarCliente(nome, cpf) {
-  var planilha = aba("Clientes");
+  var planilha = consultaAba("Clientes");
   var clientes = planilha.getDataRange().getValues();
   var nomeBusca = nome.trim().toUpperCase();
 
@@ -109,25 +52,21 @@ function buscarOuCriarCliente(nome, cpf) {
     }
   }
 
-  var novoId = "CLI_" + new Date().getTime();
+  var novoId = "CLIENTE_" + planilha.getLastRow();
   planilha.appendRow([novoId, nomeBusca, cpf]);
   return novoId;
 }
 
 function obterDadosParaSelects() {
-  var p = aba("Produtos").getDataRange().getValues();
-  var u = aba("Unidades").getDataRange().getValues();
-  var c = aba("Clientes").getDataRange().getValues();
+  var p = consultaAba("Produtos").getDataRange().getValues();
+  var u = consultaAba("Unidades").getDataRange().getValues();
+  var c = consultaAba("Clientes").getDataRange().getValues();
 
   function limpar(lista, colId, colNome) {
-    var aux = [];
-    for (var i = 1; i < lista.length; i++) {
-      if (lista[i][colNome] != "") {
-        aux.push({ id: lista[i][colId], nome: String(lista[i][colNome]) });
-      }
-    }
-    return aux.sort((a, b) => a.nome.localeCompare(b.nome));
-  }
+  return lista.slice(1) // Pula o cabeçalho
+    .map(r => ({ id: r[colId], nome: String(r[colNome]) })) // Transforma em objeto
+    .sort((a, b) => a.nome.localeCompare(b.nome)); // Organiza de A a Z
+}
 
   return {
     produtos: limpar(p, 0, 2),
@@ -137,7 +76,7 @@ function obterDadosParaSelects() {
 }
 
 function excluirProcessoNoServidor(id) {
-  var planilha = aba("Processos");
+  var planilha = consultaAba("Processos");
   var dados = planilha.getDataRange().getValues();
   for (var i = 1; i < dados.length; i++) {
     if (dados[i][0] == id) {

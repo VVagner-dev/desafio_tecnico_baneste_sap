@@ -1,9 +1,3 @@
-//Retorna os dados de uma aba atravez do nome da aba | (nomaDaAba : string) 
-function buscarDadosDaAba(nomeDaAba) {
-  const aba = consultaAba(nomeDaAba);
-  return aba.getDataRange().getValues();
-}
-
 //retorna um map generico entre duas colunas | (nomeDaAba: string,colunaId: number, colunaNome: number )
 function gerarMapGenerico(nomeDaAba, colunaId, colunaNome){
   const aba = buscarDadosDaAba(nomeDaAba);
@@ -19,33 +13,65 @@ function gerarMapGenerico(nomeDaAba, colunaId, colunaNome){
   return dicionario;
 }
 
-//retorna uma lista organizada dos processos (id, nome, produto, unidade, contrato, garantia, status)
-function getProcessoCompleto(){
-  let lista = []
-  const processoDados = buscarDadosDaAba("Processos");
-  const mapCliente = gerarMapGenerico("Clientes",0,1)
-  const mapProdutos = gerarMapGenerico("Produtos",0,2)
-  const mapUnidades = gerarMapGenerico("Unidades",0,2)
+/**
+ * Pega todos os processos e troca os IDs pelos nomes reais
+ */
+function getProcessoCompleto() {
+  var dadosProcessos = consultaAba("Processos").getDataRange().getValues();
+  var dadosClientes = consultaAba("Clientes").getDataRange().getValues();
+  var dadosProdutos = consultaAba("Produtos").getDataRange().getValues();
 
-  for(let i = 1;i<processoDados.length;i++){
-    const linha = processoDados[i]
-    // crianto o objeto processo com as conexões com as outras abas (nome, produto, unidade)
-    const processo = {
-       id : linha[0],
-       nome : mapCliente[linha[1]],
-       produto : mapProdutos[linha[2]],
-       unidade : mapUnidades[linha[3]],
-       contrato : linha[4],
-       valor : converterValorTextoParaNumero(linha[5]),
-       garantia : linha[6],
-       status : linha[7],
-       eViavel :  eViavel(linha[5],linha[6])
-    } 
-    lista.push(processo);
+  var listaParaTabela = [];
+
+  // Começa do 1 para pular o cabeçalho
+  for (var i = 1; i < dadosProcessos.length; i++) {
+    var linha = dadosProcessos[i];
+    
+    var idCli  = linha[1];
+    var idProd = linha[2];
+    var valor  = linha[5];
+    var garan  = linha[6];
+
+    // Busca o nome do cliente manualmente
+    var nomeCli = "Não encontrado";
+    for (var c = 1; c < dadosClientes.length; c++) {
+      if (dadosClientes[c][0] == idCli) {
+        nomeCli = dadosClientes[c][1];
+        break;
+      }
+    }
+
+    // Busca o nome do produto manualmente
+    var nomeProd = "Não encontrado";
+    for (var p = 1; p < dadosProdutos.length; p++) {
+      if (dadosProdutos[p][0] == idProd) {
+        nomeProd = dadosProdutos[p][2];
+        break;
+      }
+    }
+
+    listaParaTabela.push({
+      id: linha[0],
+      nome: nomeCli,
+      produto: nomeProd,
+      produtoId: idProd,
+      unidadeId: linha[3],
+      contrato: linha[4],
+      valor: valor,
+      garantia: garan,
+      status: linha[7],
+      eViavel: calcularViabilidade(valor, garan) // Regra de negócio
+    });
   }
-return lista;
+  return listaParaTabela.reverse();
 }
 
+//Retorna os dados de uma aba atravez do nome da aba | (nomaDaAba : string) 
+function buscarDadosDaAba(nomeDaAba) {
+  return consultaAba(nomeDaAba).getDataRange().getValues();
+}
+
+//Retorna a planilha atravez do nome da aba | (nomaDaAba : string) 
 function consultaAba(nomeAba){
-  return SpreadsheetApp.getActiveSpreadsheet().planilha.getSheetByName(nomeAba);
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nomeAba);
 }

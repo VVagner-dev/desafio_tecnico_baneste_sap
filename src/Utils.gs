@@ -24,7 +24,7 @@ function converterParaNumero(valor) {
 }
 
 function gerarProximoContrato() {
-  var planilha = aba("Processos");
+  var planilha = consultaAba("Processos");
   var ultima = planilha.getLastRow();
   if (ultima <= 1) return "0015001209";
 

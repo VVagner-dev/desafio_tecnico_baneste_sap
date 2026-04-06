@@ -113,10 +113,17 @@
 
     const cpfVisivel = !document.getElementById("container-cpf").classList.contains("hidden");
     const statusVisivel = !document.getElementById("container-status").classList.contains("hidden");
-
-    if (pacoteDados.nome.trim() === "" || pacoteDados.valor.trim() === "") {
-      alert("ERRO: Nome e Valor do Contrato não podem ficar vazios!");
+    
+    if (pacoteDados.nome.trim() === "") {
+      alert("ERRO: Nome do Contrato não podem ficar vazios!");
       return; 
+    }
+
+    const valorNumerico = parseFloat(pacoteDados.valor.replace("R$", "").replace(/\./g, "").replace(",", ".").trim());
+
+    if (pacoteDados.valor.trim() === "" || isNaN(valorNumerico) || valorNumerico <= 0) {
+      alert("ERRO: Valor do Contrato inválido ou vazio!");
+      return;
     }
 
     if (cpfVisivel && pacoteDados.cpf.trim() === "") {
@@ -126,6 +133,11 @@
 
     if (statusVisivel && pacoteDados.status === "") {
       alert("ERRO: O status não pode ficar vazio na edição!");
+      return;
+    }
+
+    if (pacoteDados.produtoId === "" || pacoteDados.unidadeId === "") {
+      alert("ERRO: Você precisa selecionar o Produto e a Unidade!");
       return;
     }
 
