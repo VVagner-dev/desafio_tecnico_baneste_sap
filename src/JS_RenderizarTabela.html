@@ -1,0 +1,108 @@
+<script>
+// Esta função roda assim que a página termina de carregar
+function atualizarTabela() {
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function(processos) {
+       renderizarTabela(processos);
+       esconderLoader();
+    })
+    .getProcessoCompleto();
+}
+
+window.onload = function() {
+  atualizarTabela();
+  iniciarFormulario();
+};
+
+/**
+ * Renderiza os dados dos processos na tabela HTML
+ */
+function renderizarTabela(processos) {
+  const corpoTabela = document.getElementById("tabela-processos");
+  let conteudoFinal = "";
+
+  processos.forEach(p => {
+    let corViavel = p.eViavel === "PRIORIDADE" ? "bg-red-500 text-white" : 
+                    (p.eViavel === "VIAVEL" ? "bg-green-400 text-white" : "bg-gray-500 text-white");
+    
+    let corStatus = p.status === "INICIADO" ? "bg-slate-500 text-white" : 
+                    p.status === "ANALISANDO" ? "bg-blue-500 text-white" : 
+                    p.status === "PENDENTE" ? "bg-amber-500 text-black" : 
+                    p.status === "PARALISADO" ? "bg-rose-600 text-white" : 
+                    "bg-emerald-600 text-white"; 
+
+    conteudoFinal += `
+      <tr class="border-b border-gray-200 hover:bg-gray-100 transition-colors">
+        <td class="py-3 px-6 text-left">${p.nome}</td>
+        <td class="py-3 px-6 text-left">${p.produto}</td>
+        <td class="py-3 px-6 text-center">${p.garantia || 'Nenhuma'}</td>
+        <td class="py-3 px-6 text-center font-bold text-green-600">
+          ${p.valor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+        </td>
+        <td class="py-3 px-6 text-center">
+          <span class="${corStatus} py-1 px-3 rounded-full text-xs font-semibold">${p.status}</span>
+        </td>
+        <td class="py-3 px-6 text-center">
+          <span class="${corViavel} px-3 py-1 rounded-full text-xs font-bold">${p.eViavel}</span>
+        </td>
+        <td class="py-3 px-6 text-center">
+          <div class="flex items-center justify-center space-x-3">
+            <!-- Note que adicionei p.produtoId e p.unidadeId no clique -->
+            <button onclick="prepararEdicao('${p.id}', '${p.nome}', '${p.valor}', '${p.garantia}', '${p.status}', '${p.produtoId}', '${p.unidadeId}')" 
+                    class="text-blue-500 hover:text-blue-700 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button onclick="confirmarExclusao('${p.nome}','${p.id}')" class="text-red-500 hover:text-red-700 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+  });
+
+  corpoTabela.innerHTML = conteudoFinal;
+}
+
+function confirmarExclusao(pNome, pId) {
+  if (confirm("Tem certeza que deseja excluir o processo: " + pNome + "?")) {
+    mostrarLoader(); // Ligar o loader antes de começar
+    google.script.run
+      .withSuccessHandler(function(res) {
+        atualizarTabela(); // Isso já chama o esconderLoader() por dentro
+        alert(res);
+      })
+      .excluirProcessoNoServidor(pId);
+  }
+}
+
+/**
+ * Função unificada para preparar a edição
+ */
+function prepararEdicao(id, nome, valor, garantia, status, produtoId, unidadeId) {
+    abrirModal();
+    
+    document.querySelector("#modal-processo h3").innerText = "Editar Processo: " + id;
+    
+    // Mostra o campo de status
+    document.getElementById("container-status").classList.remove("hidden");
+    
+    // Preenche todos os campos
+    document.getElementById("campo-nome").value = nome;
+    document.getElementById("campo-valor").value = valor;
+    document.getElementById("campo-garantia").value = garantia;
+    document.getElementById("campo-status").value = status;
+    
+    // Importante: preencher o produto e unidade corretos no select
+    if(produtoId) document.getElementById("campo-produto").value = produtoId;
+    if(unidadeId) document.getElementById("campo-unidade").value = unidadeId;
+
+    document.getElementById("btn-salvar").setAttribute("data-id-edicao", id);
+    
+    verificarClienteExistente();
+}
+</script>

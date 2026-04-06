@@ -1,0 +1,185 @@
+<script>
+  let processoEmAndamento = false;
+  let listaClientesGlobal = [];
+
+  function iniciarFormulario() {
+    mostrarLoader(); // Ativa o carregamento ao buscar dados iniciais
+    google.script.run
+      .withSuccessHandler(function(dados) {
+        listaClientesGlobal = dados.clientes;
+
+        const selectProdutos = document.getElementById("campo-produto");
+        const selectUnidades = document.getElementById("campo-unidade");
+        const listaCliente = document.getElementById("lista-clientes");
+
+        // --- IMPORTANTE: Limpa as listas antes de preencher para evitar duplicados ---
+        selectProdutos.innerHTML = '<option value="" disabled selected>Selecione um produto...</option>';
+        selectUnidades.innerHTML = '<option value="" disabled selected>Selecione uma unidade...</option>';
+        listaCliente.innerHTML = "";
+
+        dados.produtos.forEach(p => {
+          let opt = document.createElement("option");
+          opt.value = p.id;
+          opt.textContent = p.nome;
+          selectProdutos.appendChild(opt);
+        });
+
+        dados.unidades.forEach(u => {
+          let opt = document.createElement("option");
+          opt.value = u.id;
+          opt.textContent = u.nome;
+          selectUnidades.appendChild(opt);
+        });
+
+        dados.clientes.forEach(c => {
+          let opt = document.createElement("option");
+          opt.value = c.nome;
+          listaCliente.appendChild(opt);
+        });
+
+        esconderLoader(); // Desativa o carregamento
+      })
+      .withFailureHandler(function(erro) {
+        esconderLoader();
+        alert("Erro ao carregar formulário: " + erro.message);
+      })
+      .obterDadosParaSelects();
+  }
+
+  function verificarClienteExistente() {
+    const nomeDigitado = document.getElementById("campo-nome").value.trim().toUpperCase();
+    const divCpf = document.getElementById("container-cpf");
+    const campoCpf = document.getElementById("campo-cpf");
+
+    if (nomeDigitado == "") {
+      divCpf.classList.add("hidden");
+      campoCpf.required = false;
+      return;
+    }
+
+    const clienteExistente = listaClientesGlobal.some(c => c.nome.toUpperCase() === nomeDigitado);
+
+    if (clienteExistente) {
+      divCpf.classList.add("hidden");
+      campoCpf.required = false;
+    } else {
+      divCpf.classList.remove("hidden");
+      campoCpf.required = true;
+    }
+  }
+
+  function abrirModal() {
+    // 1. Limpa os campos
+    document.getElementById("campo-nome").value = "";
+    document.getElementById("campo-cpf").value = "";
+    document.getElementById("campo-valor").value = "";
+
+    // 2. Reseta selects para o estado inicial
+    document.getElementById("campo-produto").selectedIndex = 0;
+    document.getElementById("campo-unidade").selectedIndex = 0;
+    document.getElementById("campo-garantia").value = "NENHUMA";
+    document.getElementById("campo-status").value = "INICIADO";
+
+    // 3. Reseta metadados
+    document.getElementById("btn-salvar").removeAttribute("data-id-edicao");
+    document.querySelector("#modal-processo h3").innerText = "Novo Processo";
+    
+    // 4. Esconde containers dinâmicos
+    document.getElementById("container-status").classList.add("hidden");
+    document.getElementById("container-cpf").classList.add("hidden");
+
+    // 5. Mostra o modal
+    document.getElementById("modal-processo").classList.remove("hidden");
+  }
+
+  function fecharModal() {
+    document.getElementById("modal-processo").classList.add("hidden");
+  }
+
+  function salvarProcesso() {
+    if (processoEmAndamento) return;
+
+    const btnSalvar = document.getElementById("btn-salvar");
+    
+    const pacoteDados = {
+      nome: document.getElementById("campo-nome").value,
+      cpf: document.getElementById("campo-cpf").value,
+      produtoId: document.getElementById("campo-produto").value,
+      unidadeId: document.getElementById("campo-unidade").value,
+      valor: document.getElementById("campo-valor").value,
+      garantia: document.getElementById("campo-garantia").value,
+      status: document.getElementById("campo-status").value 
+    };
+
+    const cpfVisivel = !document.getElementById("container-cpf").classList.contains("hidden");
+    const statusVisivel = !document.getElementById("container-status").classList.contains("hidden");
+
+    if (pacoteDados.nome.trim() === "" || pacoteDados.valor.trim() === "") {
+      alert("ERRO: Nome e Valor do Contrato não podem ficar vazios!");
+      return; 
+    }
+
+    if (cpfVisivel && pacoteDados.cpf.trim() === "") {
+      alert("ERRO: Informe o CPF/CNPJ para este novo cliente!");
+      return;
+    }
+
+    if (statusVisivel && pacoteDados.status === "") {
+      alert("ERRO: O status não pode ficar vazio na edição!");
+      return;
+    }
+
+    processoEmAndamento = true;
+    btnSalvar.disabled = true;
+    btnSalvar.innerText = "Processando...";
+    mostrarLoader(); // Ativa loader no salvamento
+
+    const idParaEdicao = btnSalvar.getAttribute("data-id-edicao");
+
+    if (idParaEdicao) {
+      google.script.run
+        .withSuccessHandler(function(resposta) {
+          alert(resposta);
+          finalizarAcao(btnSalvar);
+        })
+        .withFailureHandler(tratarErro)
+        .atualizarProcessoNoServidor(idParaEdicao, pacoteDados);
+    } else {
+      google.script.run
+        .withSuccessHandler(function(resposta) {
+          alert(resposta);
+          finalizarAcao(btnSalvar);
+        })
+        .withFailureHandler(tratarErro)
+        .cadastrarNovoProcesso(pacoteDados);
+    }
+  }
+
+  function finalizarAcao(btn) {
+    fecharModal();
+    atualizarTabela(); 
+    iniciarFormulario(); // Atualiza as listas internas (clientes novos, etc)
+    
+    processoEmAndamento = false;
+    btn.disabled = false;
+    btn.innerText = "Salvar Processo";
+    // O esconderLoader() será chamado dentro do atualizarTabela ou iniciarFormulario
+  }
+
+  function tratarErro(erro) {
+    esconderLoader();
+    alert("ERRO NO SERVIDOR: " + erro.message);
+    processoEmAndamento = false;
+    const btn = document.getElementById("btn-salvar");
+    btn.disabled = false;
+    btn.innerText = "Salvar Processo";
+  }
+
+  function mostrarLoader() {
+    document.getElementById("loader").classList.remove("hidden");
+  }
+
+  function esconderLoader() {
+    document.getElementById("loader").classList.add("hidden");
+  }
+</script>

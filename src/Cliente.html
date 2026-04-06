@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    
+    <div class="bg-slate-800 p-6">
+      
+      <div class="max-w-8xl mx-auto bg-white shadow-lg overflow-hidden">
+        
+        <div class="bg-slate-800 p-6 flex justify-between items-center">
+          <h1 class="text-4xl font-bold text-white">Sistema de Processos - Banestes</h1>
+          
+          <button onclick="abrirModal()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded shadow transition duration-200">
+            + Novo Processo
+          </button>
+        </div>
+
+        <table class="min-w-full leading-normal">
+          <thead>
+          <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+            <th class="py-3 px-6 text-left">Cliente</th>
+            <th class="py-3 px-6 text-left">Produto</th>
+            <th class="py-3 px-6 text-center">Tem garantia</th>
+            <th class="py-3 px-6 text-center">Valor</th>
+            <th class="py-3 px-6 text-center">Status</th>
+            <th class="py-3 px-6 text-center">E Viavel?</th>
+            <th class="py-3 px-6 text-center">Ações</th>
+          </tr>
+          </thead>
+          <tbody id="tabela-processos" class="text-gray-600 text-sm font-light">
+           
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+    
+   <div id="modal-processo" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+        
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+          <h3 class="text-xl font-bold text-slate-800">Novo Processo</h3>
+          <button onclick="fecharModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
+            <input type="text" id="campo-nome" list="lista-clientes" oninput="verificarClienteExistente()" 
+                   class="w-full border p-2 rounded focus:ring-2 focus:ring-slate-800 outline-none" placeholder="Digite ou selecione...">
+            <datalist id="lista-clientes"></datalist>
+          </div>
+
+          <div id="container-cpf" class="hidden bg-blue-50 p-3 rounded-md border border-blue-200">
+            <label class="block text-sm font-bold text-blue-700">Novo Cliente! Informe o CPF/CNPJ:</label>
+            <input type="text" id="campo-cpf" 
+       oninput="this.value = this.value.replace(/[^0-9.-]/g, '')" 
+       class="w-full border border-blue-300 p-2 rounded mt-1" placeholder="000.000.000-00">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Produto</label>
+              <select id="campo-produto" class="w-full border p-2 rounded focus:ring-2 focus:ring-slate-800 outline-none"></select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Unidade</label>
+              <select id="campo-unidade" class="w-full border p-2 rounded focus:ring-2 focus:ring-slate-800 outline-none"></select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Valor do Contrato</label>
+              <input type="text" id="campo-valor" placeholder="R$ 0,00" 
+                oninput="this.value = this.value.replace(/[^0-9.,]/g, '')"
+                class="w-full border p-2 rounded focus:ring-2 focus:ring-slate-800 outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Garantia</label>
+              <select id="campo-garantia" class="w-full border p-2 rounded focus:ring-2 focus:ring-slate-800 outline-none">
+                <option value="NENHUMA">Nenhuma</option>
+                <option value="CARRO">Carro</option>
+                <option value="MOTO">Moto</option>
+                <option value="CASA/APARTAMENTO">Casa/Apartamento</option>
+                <option value="EQUIPAMENTO">Equipamento</option>
+              </select>
+            </div>
+            <div id="container-status" class="hidden mt-4">
+              <label class="block text-sm font-medium text-gray-700">Status do Processo</label>
+              <select id="campo-status" class="w-full border p-2 rounded focus:ring-2 focus:ring-slate-800 outline-none">
+                <option value="INICIADO">Iniciado</option>
+                <option value="ANALISANDO">Analisando</option>
+                <option value="PENDENTE">Pendente</option>
+                <option value="PARALISADO">Paralisado</option>
+                <option value="FINALIZADO">Finalizado</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end space-x-3">
+          <button onclick="fecharModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded border">Cancelar</button>
+          <button id="btn-salvar" onclick="salvarProcesso()" class="px-6 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            Salvar Processo
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+<!-- Loader de Círculo Simples -->
+<div id="loader" class="fixed inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center z-[100] hidden">
+  <div class="w-10 h-10 border-2 border-slate-500 border-t-blue-500 rounded-full animate-spin"></div>
+</div>
+
+     <?!= include('JS_RenderizarTabela'); ?>
+    <?!= include('JS_Formulario'); ?>
+  </body>
+</html>
